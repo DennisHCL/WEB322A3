@@ -8,6 +8,10 @@
 *
 * Name: Chin Lok Ho Student ID: 124907239 Date: 10-11-2024
 *
+* Published URL: Git: https://github.com/DennisHCL/WEB322A3.git
+                Vercel: https://web-322-a3-gilt.vercel.app/
+
+*
 ********************************************************************************/
 
 const express = require("express");
