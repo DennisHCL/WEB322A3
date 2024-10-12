@@ -1,0 +1,22 @@
+[
+    {
+        "id": 1,
+        "sector_name": "Land Sinks"
+    },
+    {
+        "id": 2,
+        "sector_name": "Industry"
+    },
+    {
+        "id": 3,
+        "sector_name": "Transportation"
+    },
+    {
+        "id": 4,
+        "sector_name": "Electricity"
+    },
+    {
+        "id": 5,
+        "sector_name": "Food, Agriculture, and Land Use"
+    }
+]
