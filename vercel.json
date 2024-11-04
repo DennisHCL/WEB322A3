@@ -3,14 +3,11 @@
   "builds": [
       {
           "src": "server.js",
-          "use": "@vercel/node",
-          "config": {
-              "includeFiles": [
-                  "views/**",
-                  "public/**",
-                  "modules/**"
-              ]
-          }
+          "use": "@vercel/node"
+      },
+      {
+          "src": "public/**",
+          "use": "@vercel/static"
       }
   ],
   "routes": [
@@ -20,8 +17,7 @@
       },
       {
           "src": "/(.*)",
-          "dest": "server.js"
+          "dest": "/server.js"
       }
-  ],
-  "buildCommand": "npm run build"
+  ]
 }
