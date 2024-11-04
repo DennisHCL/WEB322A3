@@ -1,12 +1,12 @@
 /********************************************************************************
-* WEB322 – Assignment 04
+*  WEB322 – Assignment 04 - EJS Implementation 
 *
 * I declare that this assignment is my own work in accordance with Seneca's
 * Academic Integrity Policy:
 *
 * https://www.senecapolytechnic.ca/about/policies/academic-integrity-policy.html
 *
-* Name: Chin Lok Ho Student ID: 124907239 Date: 10-11-2024
+* Name: Chin Lok Ho Student ID: 124907239 Date: 11-04-2024
 *
 * Published URL: Git: https://github.com/DennisHCL/WEB322A3.git
                 Vercel: https://web-322-a3-gilt.vercel.app/
