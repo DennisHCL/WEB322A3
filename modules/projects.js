@@ -3,20 +3,30 @@ require('dotenv').config();
 require('pg');
 const Sequelize = require('sequelize');
 
-// Create Sequelize instance with environment variables
+// Create Sequelize instance with direct connection string
 const sequelize = new Sequelize({
+    dialect: 'postgres',
+    host: process.env.PGHOST || 'ep-restless-sun-a4gm7mas.us-east-1.aws.neon.tech',
     database: process.env.PGDATABASE || 'web322-a5',
     username: process.env.PGUSER || 'web322-a5_owner',
     password: process.env.PGPASSWORD || 'eAfYkCWb0z2I',
-    host: process.env.PGHOST || 'ep-restless-sun-a4gm7mas.us-east-1.aws.neon.tech',
-    dialect: 'postgres',
     dialectOptions: {
         ssl: {
             require: true,
             rejectUnauthorized: false
         }
-    }
+    },
+    logging: console.log  
 });
+
+
+sequelize.authenticate()
+    .then(() => {
+        console.log('Database connection has been established successfully.');
+    })
+    .catch(err => {
+        console.error('Unable to connect to the database:', err);
+    });
 
 // Define Sector model
 const Sector = sequelize.define('Sector', {

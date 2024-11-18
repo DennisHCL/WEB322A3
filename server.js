@@ -1,26 +1,35 @@
 /********************************************************************************
 *  WEB322 – Assignment 05
-* 
+*
 * I declare that this assignment is my own work in accordance with Seneca's
 * Academic Integrity Policy:
-* 
+*
 * https://www.senecapolytechnic.ca/about/policies/academic-integrity-policy.html
-* 
+*
 * Name: Chin Lok Ho Student ID: 124907239 Date: 11-18-2024
 *
-*  Published URL: Git: https://github.com/DennisHCL/WEB322A3.git
-                Vercel: https://web-322-a3-gilt.vercel.app/
+* Published URL: https://web-322-a3-gilt.vercel.app/
 *
 ********************************************************************************/
 
+require('dotenv').config();
 const express = require("express");
 const path = require("path");
+
+// Add debugging logs for environment variables
+console.log("Environment Variables Check:", {
+    PGHOST: process.env.PGHOST ? "Set" : "Not Set",
+    PGDATABASE: process.env.PGDATABASE ? "Set" : "Not Set",
+    PGUSER: process.env.PGUSER ? "Set" : "Not Set",
+    PGPASSWORD: process.env.PGPASSWORD ? "Present" : "Not Set"
+});
+
 const projectData = require("./modules/projects");
 
 const app = express();
 const HTTP_PORT = process.env.PORT || 5000; 
 
-// Add urlencoded middleware AFTER initializing app
+// Add urlencoded middleware
 app.use(express.urlencoded({extended: true}));
 
 // Add debugging logs
@@ -46,11 +55,13 @@ app.get("/about", (req, res) => {
 
 // GET "/solutions/addProject"
 app.get("/solutions/addProject", (req, res) => {
+    console.log("Handling add project route");
     projectData.getAllSectors()
         .then(sectors => {
             res.render("addProject", { sectors: sectors });
         })
         .catch(err => {
+            console.error("Error in addProject route:", err);
             res.render("500", { 
                 message: `I'm sorry, but we have encountered the following error: ${err}` 
             });
@@ -59,6 +70,9 @@ app.get("/solutions/addProject", (req, res) => {
 
 // POST "/solutions/addProject"
 app.post("/solutions/addProject", async (req, res) => {
+    console.log("Handling POST add project route");
+    console.log("Form data received:", req.body);
+    
     try {
         const formData = {
             title: req.body.title,
@@ -70,9 +84,13 @@ app.post("/solutions/addProject", async (req, res) => {
             original_source_url: req.body.original_source_url
         };
 
+        console.log("Processed form data:", formData);
+
         await projectData.addProject(formData);
+        console.log("Project added successfully");
         res.redirect("/solutions/projects");
     } catch (err) {
+        console.error("Error in POST addProject:", err);
         res.render("500", {
             message: `I'm sorry, but we have encountered the following error: ${err}`
         });
@@ -89,6 +107,7 @@ app.get("/solutions/projects", (req, res) => {
                 res.render("projects", { projects: projects });
             })
             .catch(err => {
+                console.error("Error in projects route (sector):", err);
                 res.status(404).render("404", {
                     message: `No projects found for sector: ${sector}`
                 });
@@ -99,6 +118,7 @@ app.get("/solutions/projects", (req, res) => {
                 res.render("projects", { projects: projects });
             })
             .catch(err => {
+                console.error("Error in projects route:", err);
                 res.status(404).render("404", {
                     message: "Unable to load projects"
                 });
@@ -115,6 +135,7 @@ app.get("/solutions/projects/:id", (req, res) => {
             res.render("project", { project: project });
         })
         .catch(err => {
+            console.error("Error in single project route:", err);
             res.status(404).render("404", {
                 message: `Project not found for ID: ${id}`
             });
@@ -123,6 +144,7 @@ app.get("/solutions/projects/:id", (req, res) => {
 
 // GET /solutions/editProject/:id
 app.get("/solutions/editProject/:id", async (req, res) => {
+    console.log("Handling edit project route");
     try {
         const projectId = parseInt(req.params.id);
         const [project, sectors] = await Promise.all([
@@ -135,6 +157,7 @@ app.get("/solutions/editProject/:id", async (req, res) => {
             sectors: sectors 
         });
     } catch (err) {
+        console.error("Error in edit project route:", err);
         res.status(404).render("404", { 
             message: err
         });
@@ -143,11 +166,15 @@ app.get("/solutions/editProject/:id", async (req, res) => {
 
 // POST /solutions/editProject
 app.post("/solutions/editProject", async (req, res) => {
+    console.log("Handling POST edit project route");
+    console.log("Edit form data received:", req.body);
     try {
         const id = parseInt(req.body.id);
         await projectData.editProject(id, req.body);
+        console.log("Project updated successfully");
         res.redirect("/solutions/projects");
     } catch (err) {
+        console.error("Error in POST edit project:", err);
         res.render("500", { 
             message: `I'm sorry, but we have encountered the following error: ${err}`
         });
@@ -156,18 +183,21 @@ app.post("/solutions/editProject", async (req, res) => {
 
 // GET /solutions/deleteProject/:id
 app.get("/solutions/deleteProject/:id", async (req, res) => {
+    console.log("Handling delete project route");
     try {
         const id = parseInt(req.params.id);
         await projectData.deleteProject(id);
+        console.log("Project deleted successfully");
         res.redirect("/solutions/projects");
     } catch (err) {
+        console.error("Error in delete project route:", err);
         res.render("500", { 
             message: `I'm sorry, but we have encountered the following error: ${err}`
         });
     }
 });
 
-// 404 route 
+// 404 route (This should be the last route)
 app.use((req, res) => {
     console.log("Handling 404 route");
     res.status(404).render("404", {
