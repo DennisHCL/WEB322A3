@@ -55,17 +55,17 @@
                     <h2 class="text-2xl font-bold mt-6">Impact</h2>
                     <p><%= project.impact %></p>
 
-                    <!-- Source Link -->
+                    <!-- Source Link and Actions -->
                     <div class="mt-6">
                         <h2 class="text-2xl font-bold">Learn More</h2>
-                        <a href="<%= project.original_source_url %>" target="_blank" 
-                           class="btn btn-primary mt-2">View Original Source</a>
-                    </div>
-
-                    <!-- Back Button -->
-                    <div class="mt-6">
-                        <a href="#" onclick="history.back(); return false;" 
-                           class="btn btn-outline">← Back</a>
+                        <div class="flex flex-wrap gap-4 mt-2">
+                            <a href="<%= project.original_source_url %>" target="_blank" 
+                               class="btn btn-primary">View Original Source</a>
+                            <a href="/solutions/editProject/<%= project.id %>" 
+                               class="btn btn-success">Edit Project</a>
+                            <a href="#" onclick="history.back(); return false;" 
+                               class="btn btn-outline">← Back</a>
+                        </div>
                     </div>
                 </div>
             </div>
