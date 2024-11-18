@@ -3,26 +3,20 @@ require('dotenv').config();
 require('pg');
 const Sequelize = require('sequelize');
 
-// Create Sequelize instance with direct connection string
-const sequelize = new Sequelize('postgresql://web322-a5_owner:eAfYkCWb0z2I@ep-restless-sun-a4gm7mas.us-east-1.aws.neon.tech/web322-a5', {
+// Create Sequelize instance with environment variables
+const sequelize = new Sequelize({
+    database: process.env.PGDATABASE || 'web322-a5',
+    username: process.env.PGUSER || 'web322-a5_owner',
+    password: process.env.PGPASSWORD || 'eAfYkCWb0z2I',
+    host: process.env.PGHOST || 'ep-restless-sun-a4gm7mas.us-east-1.aws.neon.tech',
     dialect: 'postgres',
     dialectOptions: {
         ssl: {
             require: true,
             rejectUnauthorized: false
         }
-    },
-    logging: console.log
+    }
 });
-
-// Test the connection
-sequelize.authenticate()
-    .then(() => {
-        console.log('Connection has been established successfully.');
-    })
-    .catch(err => {
-        console.error('Unable to connect to the database:', err);
-    });
 
 // Define Sector model
 const Sector = sequelize.define('Sector', {
@@ -36,7 +30,7 @@ const Sector = sequelize.define('Sector', {
     timestamps: false
 });
 
-// Define Project model with updated configuration
+// Define Project model
 const Project = sequelize.define('Project', {
     id: {
         type: Sequelize.INTEGER,
@@ -80,33 +74,10 @@ const Project = sequelize.define('Project', {
 // Define relationship
 Project.belongsTo(Sector, { foreignKey: 'sector_id' });
 
-// Function to reset sequence
-async function resetSequence() {
-    try {
-        // Find the maximum id currently in the Projects table
-        const result = await sequelize.query(
-            "SELECT MAX(id) FROM \"Projects\"",
-            { type: sequelize.QueryTypes.SELECT }
-        );
-        
-        const maxId = result[0].max || 0;
-        
-        // Reset the sequence to start from after the maximum id
-        await sequelize.query(
-            `ALTER SEQUENCE "Projects_id_seq" RESTART WITH ${maxId + 1};`
-        );
-        
-        console.log("Sequence reset successfully");
-    } catch (error) {
-        console.error("Error resetting sequence:", error);
-    }
-}
-
-// Initialize function with sequence reset
+// Initialize function
 async function initialize() {
     try {
         await sequelize.sync();
-        await resetSequence();
         return Promise.resolve();
     } catch (err) {
         return Promise.reject(err);
@@ -195,7 +166,7 @@ function getAllSectors() {
     });
 }
 
-// Updated addProject function
+// Add project function
 function addProject(projectData) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -224,6 +195,7 @@ function addProject(projectData) {
     });
 }
 
+// Edit project function
 function editProject(id, projectData) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -235,15 +207,14 @@ function editProject(id, projectData) {
             // Parse sector_id as integer
             projectData.sector_id = parseInt(projectData.sector_id);
 
-            // Find the project
-            const project = await Project.findByPk(id);
-            
-            if (!project) {
+            // Update the project
+            const result = await Project.update(projectData, {
+                where: { id: id }
+            });
+
+            if (result[0] === 0) {
                 throw new Error("Project not found");
             }
-
-            // Update the project
-            await project.update(projectData);
             
             resolve();
         } catch (err) {
@@ -257,10 +228,10 @@ function editProject(id, projectData) {
     });
 }
 
+// Delete project function
 function deleteProject(id) {
     return new Promise(async (resolve, reject) => {
         try {
-            // Find and delete the project
             const result = await Project.destroy({
                 where: { id: id }
             });
