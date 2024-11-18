@@ -1,4 +1,3 @@
-// Add required module imports at the top
 require('dotenv').config();
 require('pg');
 const Sequelize = require('sequelize');
@@ -183,12 +182,8 @@ function addProject(projectData) {
             // Validate sector_id
             if (!projectData.sector_id || isNaN(projectData.sector_id)) {
                 throw new Error("Invalid sector_id");
-            }
-
-            // Ensure we don't have an id in the projectData
-            delete projectData.id;
-
-            // Parse sector_id as integer
+            }            
+            delete projectData.id;            
             projectData.sector_id = parseInt(projectData.sector_id);
 
             // Create the project
@@ -258,7 +253,6 @@ function deleteProject(id) {
     });
 }
 
-// Export functions
 module.exports = {
     initialize,
     getAllProjects,

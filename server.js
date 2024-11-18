@@ -16,14 +16,6 @@ require('dotenv').config();
 const express = require("express");
 const path = require("path");
 
-// Add debugging logs for environment variables
-console.log("Environment Variables Check:", {
-    PGHOST: process.env.PGHOST ? "Set" : "Not Set",
-    PGDATABASE: process.env.PGDATABASE ? "Set" : "Not Set",
-    PGUSER: process.env.PGUSER ? "Set" : "Not Set",
-    PGPASSWORD: process.env.PGPASSWORD ? "Present" : "Not Set"
-});
-
 const projectData = require("./modules/projects");
 
 const app = express();
@@ -31,9 +23,6 @@ const HTTP_PORT = process.env.PORT || 5000;
 
 // Add urlencoded middleware
 app.use(express.urlencoded({extended: true}));
-
-// Add debugging logs
-console.log("Starting server setup...");
 
 // Set EJS as the view engine
 app.set('view engine', 'ejs');
