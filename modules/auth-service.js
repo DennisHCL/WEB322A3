@@ -16,54 +16,49 @@ const userSchema = new Schema({
     }]
 });
 
-let User;
+let User; // Will store our model
 
 function initialize() {
     return new Promise((resolve, reject) => {
-        try {
-            let db = mongoose.createConnection(process.env.MONGODB, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-                serverSelectionTimeoutMS: 5000,
-                family: 4
-            });
-            
-            db.on('error', (err) => {
-                console.error('MongoDB connection error:', err);
-                reject(err);
-            });
-            
-            db.once('open', () => {
-                console.log('MongoDB connected successfully');
-                User = db.model("users", userSchema);
-                resolve();
-            });
-        } catch (err) {
-            console.error('MongoDB initialization error:', err);
+        let db = mongoose.createConnection(process.env.MONGODB);
+        
+        db.on('error', (err) => {
+            console.error('MongoDB Connection Error:', err);
             reject(err);
-        }
+        });
+
+        db.once('open', () => {
+            // Define User model after successful connection
+            User = db.model("users", userSchema);
+            console.log("MongoDB Connection Success - User Model Created");
+            resolve();
+        });
     });
 }
 
 function registerUser(userData) {
     return new Promise((resolve, reject) => {
+        // Add validation to ensure User model exists
+        if (!User) {
+            reject("Database not initialized. Please try again.");
+            return;
+        }
+
         if (userData.password !== userData.password2) {
             reject("Passwords do not match");
             return;
         }
 
-        // Use an explicit promise chain for better error handling
-        return bcrypt.hash(userData.password, 10)
+        bcrypt.hash(userData.password, 10)
             .then(hash => {
-                // Create new user with hashed password
                 let newUser = new User({
                     userName: userData.userName,
-                    password: hash, // Use the hashed password
+                    password: hash,
                     email: userData.email,
                     loginHistory: []
                 });
-                
-                return newUser.save(); // Return the save promise
+
+                return newUser.save();
             })
             .then(() => {
                 resolve();
@@ -72,8 +67,8 @@ function registerUser(userData) {
                 if (err.code === 11000) {
                     reject("User Name already taken");
                 } else {
-                    console.error("Registration error:", err); // Add detailed logging
-                    reject("There was an error creating the user: " + err.message);
+                    console.error("Registration Error:", err);
+                    reject(`There was an error creating the user: ${err.message}`);
                 }
             });
     });
@@ -81,39 +76,45 @@ function registerUser(userData) {
 
 function checkUser(userData) {
     return new Promise((resolve, reject) => {
-        User.find({ userName: userData.userName })
+        // Add validation to ensure User model exists
+        if (!User) {
+            reject("Database not initialized. Please try again.");
+            return;
+        }
+
+        User.findOne({ userName: userData.userName })
             .exec()
-            .then((users) => {
-                if (users.length === 0) {
+            .then(user => {
+                if (!user) {
                     reject(`Unable to find user: ${userData.userName}`);
                     return;
                 }
 
-                bcrypt.compare(userData.password, users[0].password)
-                    .then((result) => {
+                bcrypt.compare(userData.password, user.password)
+                    .then(result => {
                         if (!result) {
                             reject(`Incorrect Password for user: ${userData.userName}`);
                             return;
                         }
 
-                        if (users[0].loginHistory.length === 8) {
-                            users[0].loginHistory.pop();
+                        if (user.loginHistory.length === 8) {
+                            user.loginHistory.pop();
                         }
-
-                        users[0].loginHistory.unshift({
-                            dateTime: new Date().toString(),
+                        
+                        user.loginHistory.unshift({
+                            dateTime: new Date(),
                             userAgent: userData.userAgent
                         });
 
                         User.updateOne(
-                            { userName: users[0].userName },
-                            { $set: { loginHistory: users[0].loginHistory } }
+                            { userName: user.userName },
+                            { $set: { loginHistory: user.loginHistory } }
                         )
                             .exec()
                             .then(() => {
-                                resolve(users[0]);
+                                resolve(user);
                             })
-                            .catch((err) => {
+                            .catch(err => {
                                 reject(`There was an error verifying the user: ${err}`);
                             });
                     })
@@ -121,7 +122,7 @@ function checkUser(userData) {
                         reject(`There was an error verifying the password: ${err}`);
                     });
             })
-            .catch(() => {
+            .catch(err => {
                 reject(`Unable to find user: ${userData.userName}`);
             });
     });

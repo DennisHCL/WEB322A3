@@ -288,25 +288,16 @@ app.use((req, res) => {
 });
 
 // Initialize and start server with better error handling
-if (process.env.PORT) {
-    projectData.initialize()
-        .then(authData.initialize)
-        .then(() => {
-            app.listen(HTTP_PORT, () => {
-                console.log(`Server is running on port ${HTTP_PORT}`);
-            });
-        })
-        .catch((err) => {
-            console.error(`Failed to start server: ${err}`);
-            process.exit(1);
+projectData.initialize()
+    .then(authData.initialize)
+    .then(() => {
+        app.listen(HTTP_PORT, () => {
+            console.log(`Server is running on port ${HTTP_PORT}`);
         });
-} else {
-    // For Vercel serverless deployment
-    projectData.initialize()
-        .then(authData.initialize)
-        .catch(err => {
-            console.error(`Initialization error: ${err}`);
-        });
-}
+    })
+    .catch((err) => {
+        console.error(`Failed to start server: ${err}`);
+        process.exit(1);
+    });
 
 module.exports = app;
