@@ -4,6 +4,7 @@ const Schema = mongoose.Schema;
 require('dotenv').config();
 
 let connection = null;
+let User = null;
 
 const userSchema = new Schema({
     userName: {
@@ -18,54 +19,42 @@ const userSchema = new Schema({
     }]
 });
 
-class MongoConnection {
-    constructor() {
-        if (!connection) {
-            connection = this.connect();
-        }
+async function getConnection() {
+    if (connection && User) {
         return connection;
     }
 
-    async connect() {
-        if (connection) return connection;
+    connection = await mongoose.createConnection(process.env.MONGODB, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000
+    });
 
-        try {
-            const conn = await mongoose.createConnection(process.env.MONGODB, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-                bufferCommands: false,
-                serverSelectionTimeoutMS: 5000
-            }).asPromise();
-
-            conn.model('users', userSchema);
-            console.log('MongoDB Connected');
-            return conn;
-        } catch (err) {
-            console.error('MongoDB Connection Error:', err);
-            throw err;
-        }
-    }
+    User = connection.model('users', userSchema);
+    return connection;
 }
-
-const dbConnection = new MongoConnection();
 
 module.exports = {
     initialize: async function() {
         try {
-            const conn = await dbConnection;
+            await getConnection();
             return Promise.resolve();
         } catch (err) {
+            console.error('Initialization error:', err);
             return Promise.reject(err);
         }
     },
 
     registerUser: async function(userData) {
         try {
-            const conn = await dbConnection;
-            const User = conn.model('users');
+            await getConnection();
+
+            if (!userData.password || !userData.password2) {
+                throw new Error("Password fields cannot be empty");
+            }
 
             if (userData.password !== userData.password2) {
-                return Promise.reject("Passwords do not match");
+                throw new Error("Passwords do not match");
             }
 
             const hash = await bcrypt.hash(userData.password, 10);
@@ -82,24 +71,21 @@ module.exports = {
             if (err.code === 11000) {
                 return Promise.reject("User Name already taken");
             }
-            return Promise.reject(`There was an error creating the user: ${err.message}`);
+            return Promise.reject(err.message || "Error creating user");
         }
     },
 
     checkUser: async function(userData) {
         try {
-            const conn = await dbConnection;
-            const User = conn.model('users');
-
+            await getConnection();
             const user = await User.findOne({ userName: userData.userName });
             
             if (!user) {
                 throw new Error(`Unable to find user: ${userData.userName}`);
             }
 
-            const valid = await bcrypt.compare(userData.password, user.password);
-            
-            if (!valid) {
+            const match = await bcrypt.compare(userData.password, user.password);
+            if (!match) {
                 throw new Error(`Incorrect Password for user: ${userData.userName}`);
             }
 
