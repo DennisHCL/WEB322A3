@@ -21,6 +21,10 @@ const authData = require("./modules/auth-service");
 
 const projectData = require("./modules/projects");
 
+console.log('Environment check:');
+console.log('MONGODB env exists:', !!process.env.MONGODB);
+console.log('PORT env exists:', !!process.env.PORT);
+
 const app = express();
 const HTTP_PORT = process.env.PORT || 5000; 
 
@@ -288,7 +292,7 @@ app.use((req, res) => {
 });
 
 if (process.env.PORT) {
-    // For regular deployment
+    console.log('Starting in regular deployment mode');
     Promise.all([
         projectData.initialize(),
         authData.initialize()
@@ -299,11 +303,11 @@ if (process.env.PORT) {
         });
     })
     .catch((err) => {
-        console.error(`Failed to start server:`, err);
+        console.error('Failed to start server:', err);
         process.exit(1);
     });
 } else {
-    // For Vercel serverless deployment
+    console.log('Starting in serverless mode');
     Promise.all([
         projectData.initialize(),
         authData.initialize()
@@ -312,7 +316,8 @@ if (process.env.PORT) {
         console.log('Databases initialized successfully for serverless deployment');
     })
     .catch(err => {
-        console.error(`Initialization error:`, err);
+        console.error('Initialization error:', err);
+        throw err; // Make sure error is properly propagated
     });
 }
 
