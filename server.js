@@ -16,6 +16,8 @@
 require('dotenv').config();
 const express = require("express");
 const path = require("path");
+const clientSessions = require('client-sessions');
+const authData = require("./modules/auth-service");
 
 const projectData = require("./modules/projects");
 
@@ -31,6 +33,29 @@ app.set('views', __dirname + '/views');
 
 app.use(express.static(__dirname + '/public'));
 
+// Setup client-sessions middleware
+app.use(clientSessions({
+    cookieName: "session",
+    secret: "web322_assignment6",
+    duration: 2 * 60 * 1000,
+    activeDuration: 1000 * 60
+}));
+
+// Make session data available to views
+app.use((req, res, next) => {
+    res.locals.session = req.session;
+    next();
+});
+
+// Helper middleware function
+function ensureLogin(req, res, next) {
+    if (!req.session.user) {
+        res.redirect('/login');
+    } else {
+        next();
+    }
+}
+
 // GET "/"
 app.get("/", (req, res) => {
     console.log("Handling root route");
@@ -44,7 +69,7 @@ app.get("/about", (req, res) => {
 });
 
 // GET "/solutions/addProject"
-app.get("/solutions/addProject", (req, res) => {
+app.get("/solutions/addProject",ensureLogin, (req, res) => {
     console.log("Handling add project route");
     projectData.getAllSectors()
         .then(sectors => {
@@ -59,7 +84,7 @@ app.get("/solutions/addProject", (req, res) => {
 });
 
 // POST "/solutions/addProject"
-app.post("/solutions/addProject", async (req, res) => {
+app.post("/solutions/addProject", ensureLogin, async (req, res) => {
     console.log("Handling POST add project route");
     console.log("Form data received:", req.body);
     
@@ -133,7 +158,7 @@ app.get("/solutions/projects/:id", (req, res) => {
 });
 
 // GET /solutions/editProject/:id
-app.get("/solutions/editProject/:id", async (req, res) => {
+app.get("/solutions/editProject/:id", ensureLogin, async (req, res) => {
     console.log("Handling edit project route");
     try {
         const projectId = parseInt(req.params.id);
@@ -155,7 +180,7 @@ app.get("/solutions/editProject/:id", async (req, res) => {
 });
 
 // POST /solutions/editProject
-app.post("/solutions/editProject", async (req, res) => {
+app.post("/solutions/editProject", ensureLogin, async (req, res) => {
     console.log("Handling POST edit project route");
     console.log("Edit form data received:", req.body);
     try {
@@ -172,7 +197,7 @@ app.post("/solutions/editProject", async (req, res) => {
 });
 
 // GET /solutions/deleteProject/:id
-app.get("/solutions/deleteProject/:id", async (req, res) => {
+app.get("/solutions/deleteProject/:id", ensureLogin, async (req, res) => {
     console.log("Handling delete project route");
     try {
         const id = parseInt(req.params.id);
@@ -187,6 +212,73 @@ app.get("/solutions/deleteProject/:id", async (req, res) => {
     }
 });
 
+// GET /login
+app.get("/login", (req, res) => {
+    res.render("login", { 
+        errorMessage: "", 
+        userName: "" 
+    });
+});
+
+// GET /register
+app.get("/register", (req, res) => {
+    res.render("register", {
+        errorMessage: "", 
+        successMessage: "", 
+        userName: ""
+    });
+});
+
+// POST /register
+app.post("/register", (req, res) => {
+    authData.registerUser(req.body)
+        .then(() => {
+            res.render("register", {
+                errorMessage: "",
+                successMessage: "User created",
+                userName: ""
+            });
+        }).catch((err) => {
+            res.render("register", {
+                errorMessage: err,
+                successMessage: "",
+                userName: req.body.userName
+            });
+        });
+});
+
+// POST /login
+app.post("/login", (req, res) => {
+    req.body.userAgent = req.get('User-Agent');
+    
+    authData.checkUser(req.body)
+        .then((user) => {
+            req.session.user = {
+                userName: user.userName,
+                email: user.email,
+                loginHistory: user.loginHistory
+            }
+            res.redirect('/solutions/projects');
+        })
+        .catch((err) => {
+            res.render("login", {
+                errorMessage: err,
+                userName: req.body.userName
+            });
+        });
+});
+
+// GET /logout
+app.get("/logout", (req, res) => {
+    req.session.reset();
+    res.redirect("/");
+});
+
+// GET /userHistory
+app.get("/userHistory", ensureLogin, (req, res) => {
+    res.render("userHistory");
+});
+
 // 404 route (This should be the last route)
 app.use((req, res) => {
     console.log("Handling 404 route");
@@ -197,6 +289,7 @@ app.use((req, res) => {
 
 // Initialize and start server with better error handling
 projectData.initialize()
+    .then(authData.initialize)
     .then(() => {
         app.listen(HTTP_PORT, () => {
             console.log(`Server is running and listening on port ${HTTP_PORT}`);
@@ -205,5 +298,5 @@ projectData.initialize()
     })
     .catch((err) => {
         console.error(`Failed to start server: ${err}`);
-        process.exit(1); // Exit the process if initialization fails
+        process.exit(1);
     });
