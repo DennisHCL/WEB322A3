@@ -20,16 +20,28 @@ let User;
 
 function initialize() {
     return new Promise((resolve, reject) => {
-        let db = mongoose.createConnection(process.env.MONGODB);
-        
-        db.on('error', (err) => {
+        try {
+            let db = mongoose.createConnection(process.env.MONGODB, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+                serverSelectionTimeoutMS: 5000,
+                family: 4
+            });
+            
+            db.on('error', (err) => {
+                console.error('MongoDB connection error:', err);
+                reject(err);
+            });
+            
+            db.once('open', () => {
+                console.log('MongoDB connected successfully');
+                User = db.model("users", userSchema);
+                resolve();
+            });
+        } catch (err) {
+            console.error('MongoDB initialization error:', err);
             reject(err);
-        });
-        
-        db.once('open', () => {
-            User = db.model("users", userSchema);
-            resolve();
-        });
+        }
     });
 }
 
