@@ -52,26 +52,29 @@ function registerUser(userData) {
             return;
         }
 
-        // Hash the password before saving
-        bcrypt.hash(userData.password, 10)
+        // Use an explicit promise chain for better error handling
+        return bcrypt.hash(userData.password, 10)
             .then(hash => {
-                userData.password = hash;
-                let newUser = new User(userData);
+                // Create new user with hashed password
+                let newUser = new User({
+                    userName: userData.userName,
+                    password: hash, // Use the hashed password
+                    email: userData.email,
+                    loginHistory: []
+                });
                 
-                newUser.save()
-                    .then(() => {
-                        resolve();
-                    })
-                    .catch((err) => {
-                        if (err.code === 11000) {
-                            reject("User Name already taken");
-                        } else {
-                            reject(`There was an error creating the user: ${err}`);
-                        }
-                    });
+                return newUser.save(); // Return the save promise
+            })
+            .then(() => {
+                resolve();
             })
             .catch(err => {
-                reject("There was an error encrypting the password");
+                if (err.code === 11000) {
+                    reject("User Name already taken");
+                } else {
+                    console.error("Registration error:", err); // Add detailed logging
+                    reject("There was an error creating the user: " + err.message);
+                }
             });
     });
 }
