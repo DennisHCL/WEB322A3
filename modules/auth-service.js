@@ -16,23 +16,42 @@ const userSchema = new Schema({
     }]
 });
 
-let User; // Will store our model
+let User;
+let db;
 
 function initialize() {
     return new Promise((resolve, reject) => {
-        let db = mongoose.createConnection(process.env.MONGODB);
-        
-        db.on('error', (err) => {
-            console.error('MongoDB Connection Error:', err);
-            reject(err);
-        });
+        try {
+            if (db) {
+                console.log("Database already initialized!");
+                resolve();
+                return;
+            }
 
-        db.once('open', () => {
-            // Define User model after successful connection
-            User = db.model("users", userSchema);
-            console.log("MongoDB Connection Success - User Model Created");
-            resolve();
-        });
+            const connectOptions = {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+                serverSelectionTimeoutMS: 5000,
+                family: 4
+            };
+
+            db = mongoose.createConnection(process.env.MONGODB, connectOptions);
+            
+            db.on('error', (err) => {
+                console.error('MongoDB Connection Error:', err);
+                reject(err);
+            });
+
+            db.once('open', () => {
+                User = db.model("users", userSchema);
+                console.log("MongoDB Connection Success - User Model Created");
+                resolve();
+            });
+
+        } catch (err) {
+            console.error('MongoDB Initialization Error:', err);
+            reject(err);
+        }
     });
 }
 
