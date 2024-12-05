@@ -237,14 +237,22 @@ app.get("/register", (req, res) => {
 
 // POST /register
 app.post("/register", (req, res) => {
+    console.log("Register route hit with data:", {
+        userName: req.body.userName,
+        email: req.body.email,
+        // Don't log passwords
+    });
+    
     authData.registerUser(req.body)
         .then(() => {
+            console.log("Registration successful");
             res.render("register", {
                 errorMessage: "",
                 successMessage: "User created",
                 userName: ""
             });
         }).catch((err) => {
+            console.error("Registration failed:", err);
             res.render("register", {
                 errorMessage: err,
                 successMessage: "",

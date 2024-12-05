@@ -23,17 +23,18 @@ let isInitialized = false;
 function initialize() {
     return new Promise(async (resolve, reject) => {
         try {
+            console.log("Starting MongoDB initialization check");
+            
             // If already initialized, resolve immediately
-            if (isInitialized) {
+            if (isInitialized && User) {
                 console.log("MongoDB: Already initialized");
                 resolve();
                 return;
             }
 
+            console.log("MongoDB: New initialization required");
             const dbURI = process.env.MONGODB;
-            console.log("MongoDB: Attempting connection");
-
-            // Create MongoDB connection
+            
             db = await mongoose.createConnection(dbURI, {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
@@ -41,31 +42,41 @@ function initialize() {
                 family: 4
             }).asPromise();
 
-            // Define models after successful connection
+            // Define model
             User = db.model("users", userSchema);
             isInitialized = true;
-            console.log("MongoDB: Connection successful");
+            console.log("MongoDB: Initialization complete - User model created");
             resolve();
 
         } catch (err) {
             console.error("MongoDB Initialization Error:", err);
+            isInitialized = false;
+            User = null;
             reject(err);
         }
     });
 }
 
 async function registerUser(userData) {
+    console.log("Starting user registration process");
+    
     try {
-        // Ensure database is initialized
-        if (!isInitialized) {
+        // Force initialization check
+        if (!isInitialized || !User) {
+            console.log("Database not initialized, attempting initialization");
             await initialize();
         }
 
+        // Validate passwords
         if (userData.password !== userData.password2) {
+            console.log("Password mismatch detected");
             throw new Error("Passwords do not match");
         }
 
+        console.log("Hashing password...");
         const hash = await bcrypt.hash(userData.password, 10);
+        
+        console.log("Creating new user document");
         const newUser = new User({
             userName: userData.userName,
             password: hash,
@@ -73,13 +84,22 @@ async function registerUser(userData) {
             loginHistory: []
         });
 
+        console.log("Attempting to save user");
         await newUser.save();
+        console.log("User saved successfully");
+        
         return Promise.resolve();
     } catch (err) {
+        console.error("Registration error details:", err);
+        
         if (err.code === 11000) {
             return Promise.reject("User Name already taken");
         }
-        console.error("Registration Error:", err);
+        
+        if (!isInitialized || !User) {
+            return Promise.reject("Database not initialized. Please try again.");
+        }
+        
         return Promise.reject(`There was an error creating the user: ${err.message}`);
     }
 }
