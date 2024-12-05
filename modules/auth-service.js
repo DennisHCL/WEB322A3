@@ -22,16 +22,14 @@ let db;
 function initialize() {
     return new Promise((resolve, reject) => {
         try {
-            if (db) {
-                console.log("Database already initialized!");
-                resolve();
-                return;
-            }
+            // Add debug logging
+            console.log("Starting MongoDB initialization...");
+            console.log("MongoDB URI:", process.env.MONGODB ? "URI exists" : "URI is missing");
 
             const connectOptions = {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
-                serverSelectionTimeoutMS: 5000,
+                serverSelectionTimeoutMS: 10000, // Increased timeout
                 family: 4
             };
 
@@ -42,11 +40,27 @@ function initialize() {
                 reject(err);
             });
 
+            db.once('connecting', () => {
+                console.log('Connecting to MongoDB...');
+            });
+
+            db.once('connected', () => {
+                console.log('Connected to MongoDB');
+            });
+
             db.once('open', () => {
                 User = db.model("users", userSchema);
                 console.log("MongoDB Connection Success - User Model Created");
                 resolve();
             });
+
+            // Add connection timeout
+            setTimeout(() => {
+                if (!db || !User) {
+                    console.error('MongoDB connection timeout');
+                    reject(new Error('Connection timeout'));
+                }
+            }, 15000);
 
         } catch (err) {
             console.error('MongoDB Initialization Error:', err);

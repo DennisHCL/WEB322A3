@@ -299,7 +299,7 @@ if (process.env.PORT) {
         });
     })
     .catch((err) => {
-        console.error(`Failed to start server: ${err}`);
+        console.error(`Failed to start server:`, err);
         process.exit(1);
     });
 } else {
@@ -312,7 +312,7 @@ if (process.env.PORT) {
         console.log('Databases initialized successfully for serverless deployment');
     })
     .catch(err => {
-        console.error(`Initialization error: ${err}`);
+        console.error(`Initialization error:`, err);
     });
 }
 
