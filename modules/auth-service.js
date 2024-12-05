@@ -22,11 +22,11 @@ let db;
 function initialize() {
     return new Promise((resolve, reject) => {
         try {
-            console.log("Starting MongoDB initialization...");
-            console.log("Attempting to connect to:", process.env.MONGODB ? "MongoDB URI exists" : "MongoDB URI is missing");
-
-            if (!process.env.MONGODB) {
-                throw new Error("MongoDB connection string is missing");
+            const dbURI = process.env.MONGODB;
+            console.log('MongoDB URI status:', dbURI ? 'Present' : 'Missing');
+            
+            if (!dbURI) {
+                throw new Error('MONGODB environment variable is not set');
             }
 
             const connectOptions = {
@@ -36,35 +36,36 @@ function initialize() {
                 family: 4
             };
 
-            db = mongoose.createConnection(process.env.MONGODB, connectOptions);
+            console.log('Attempting MongoDB connection...');
+            db = mongoose.createConnection(dbURI, connectOptions);
             
-            // Add more detailed connection event logging
             db.on('connecting', () => {
-                console.log('MongoDB: Attempting to connect...');
-            });
-
-            db.on('connected', () => {
-                console.log('MongoDB: Successfully connected');
+                console.log('MongoDB: Connecting...');
             });
 
             db.on('error', (err) => {
-                console.error('MongoDB Connection Error:', err);
+                console.error('MongoDB Connection Error:', JSON.stringify(err));
                 reject(err);
             });
 
-            db.on('disconnected', () => {
-                console.log('MongoDB: Connection lost');
-            });
-
             db.once('open', () => {
-                console.log('MongoDB: Connection opened');
+                console.log('MongoDB: Connected successfully');
                 User = db.model("users", userSchema);
-                console.log("MongoDB: User model created successfully");
+                console.log('MongoDB: User model created');
                 resolve();
             });
 
+            // Add a timeout
+            setTimeout(() => {
+                if (!db || !User) {
+                    const error = new Error('MongoDB connection timeout');
+                    console.error(error);
+                    reject(error);
+                }
+            }, 10000);
+
         } catch (err) {
-            console.error('MongoDB Initialization Error:', err.message);
+            console.error('MongoDB Initialization Error:', err);
             reject(err);
         }
     });

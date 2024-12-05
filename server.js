@@ -21,9 +21,11 @@ const authData = require("./modules/auth-service");
 
 const projectData = require("./modules/projects");
 
-console.log('Environment check:');
-console.log('MONGODB env exists:', !!process.env.MONGODB);
-console.log('PORT env exists:', !!process.env.PORT);
+console.log('Starting server...');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Environment variables check:');
+console.log('MONGODB:', process.env.MONGODB ? 'Set' : 'Not set');
+console.log('PORT:', process.env.PORT || 'Not set (using default)');
 
 const app = express();
 const HTTP_PORT = process.env.PORT || 5000; 
@@ -292,32 +294,33 @@ app.use((req, res) => {
 });
 
 if (process.env.PORT) {
-    console.log('Starting in regular deployment mode');
+    console.log('Running in standard mode');
     Promise.all([
         projectData.initialize(),
         authData.initialize()
     ])
     .then(() => {
+        console.log('All databases initialized');
         app.listen(HTTP_PORT, () => {
-            console.log(`Server is running on port ${HTTP_PORT}`);
+            console.log(`Server running on port ${HTTP_PORT}`);
         });
     })
     .catch((err) => {
-        console.error('Failed to start server:', err);
+        console.error('Server initialization failed:', err);
         process.exit(1);
     });
 } else {
-    console.log('Starting in serverless mode');
+    console.log('Running in serverless mode');
     Promise.all([
         projectData.initialize(),
         authData.initialize()
     ])
     .then(() => {
-        console.log('Databases initialized successfully for serverless deployment');
+        console.log('Serverless initialization complete');
     })
     .catch(err => {
-        console.error('Initialization error:', err);
-        throw err; // Make sure error is properly propagated
+        console.error('Serverless initialization failed:', err);
+        throw err;
     });
 }
 
