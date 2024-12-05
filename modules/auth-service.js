@@ -22,48 +22,49 @@ let db;
 function initialize() {
     return new Promise((resolve, reject) => {
         try {
-            // Add debug logging
             console.log("Starting MongoDB initialization...");
-            console.log("MongoDB URI:", process.env.MONGODB ? "URI exists" : "URI is missing");
+            console.log("Attempting to connect to:", process.env.MONGODB ? "MongoDB URI exists" : "MongoDB URI is missing");
+
+            if (!process.env.MONGODB) {
+                throw new Error("MongoDB connection string is missing");
+            }
 
             const connectOptions = {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
-                serverSelectionTimeoutMS: 10000, // Increased timeout
+                serverSelectionTimeoutMS: 15000,
                 family: 4
             };
 
             db = mongoose.createConnection(process.env.MONGODB, connectOptions);
             
+            // Add more detailed connection event logging
+            db.on('connecting', () => {
+                console.log('MongoDB: Attempting to connect...');
+            });
+
+            db.on('connected', () => {
+                console.log('MongoDB: Successfully connected');
+            });
+
             db.on('error', (err) => {
                 console.error('MongoDB Connection Error:', err);
                 reject(err);
             });
 
-            db.once('connecting', () => {
-                console.log('Connecting to MongoDB...');
-            });
-
-            db.once('connected', () => {
-                console.log('Connected to MongoDB');
+            db.on('disconnected', () => {
+                console.log('MongoDB: Connection lost');
             });
 
             db.once('open', () => {
+                console.log('MongoDB: Connection opened');
                 User = db.model("users", userSchema);
-                console.log("MongoDB Connection Success - User Model Created");
+                console.log("MongoDB: User model created successfully");
                 resolve();
             });
 
-            // Add connection timeout
-            setTimeout(() => {
-                if (!db || !User) {
-                    console.error('MongoDB connection timeout');
-                    reject(new Error('Connection timeout'));
-                }
-            }, 15000);
-
         } catch (err) {
-            console.error('MongoDB Initialization Error:', err);
+            console.error('MongoDB Initialization Error:', err.message);
             reject(err);
         }
     });
