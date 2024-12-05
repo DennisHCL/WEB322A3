@@ -18,6 +18,7 @@ const express = require("express");
 const path = require("path");
 const clientSessions = require('client-sessions');
 const authData = require("./modules/auth-service");
+const isServerlessEnvironment = !process.env.PORT;
 
 const projectData = require("./modules/projects");
 
@@ -301,35 +302,49 @@ app.use((req, res) => {
     });
 });
 
-if (process.env.PORT) {
-    console.log('Running in standard mode');
-    Promise.all([
-        projectData.initialize(),
-        authData.initialize()
-    ])
-    .then(() => {
-        console.log('All databases initialized');
-        app.listen(HTTP_PORT, () => {
-            console.log(`Server running on port ${HTTP_PORT}`);
+if (isServerlessEnvironment) {
+    // For Vercel
+    Promise.all([projectData.initialize(), authData.initialize()])
+        .then(() => {
+            console.log('Databases initialized for serverless');
+            app.listen(HTTP_PORT, () => {
+                console.log('Server listening on port', HTTP_PORT);
+            });
+        })
+        .catch(err => {
+            console.error('Initialization failed:', err);
+            throw err;
         });
-    })
-    .catch((err) => {
-        console.error('Server initialization failed:', err);
-        process.exit(1);
-    });
 } else {
-    console.log('Running in serverless mode');
-    Promise.all([
-        projectData.initialize(),
-        authData.initialize()
-    ])
-    .then(() => {
-        console.log('Serverless initialization complete');
-    })
-    .catch(err => {
-        console.error('Serverless initialization failed:', err);
-        throw err;
-    });
+    // For local development
+    Promise.all([projectData.initialize(), authData.initialize()])
+        .then(() => {
+            app.listen(HTTP_PORT, () => {
+                console.log('Server listening on port', HTTP_PORT);
+            });
+        })
+        .catch(err => {
+            console.error('Failed to start server:', err);
+            process.exit(1);
+        });
 }
+
+// Add this middleware right after your session middleware
+app.use(async (req, res, next) => {
+    try {
+        if (!isServerlessEnvironment) {
+            return next();
+        }
+        
+        // Re-initialize for each request in serverless environment
+        await Promise.all([projectData.initialize(), authData.initialize()]);
+        next();
+    } catch (err) {
+        console.error('Middleware initialization error:', err);
+        res.status(500).render('500', {
+            message: 'Database initialization error. Please try again.'
+        });
+    }
+});
 
 module.exports = app;
