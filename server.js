@@ -1,12 +1,12 @@
 /********************************************************************************
-*  WEB322 – Assignment 05
+*  WEB322 – Assignment 06
 *
 * I declare that this assignment is my own work in accordance with Seneca's
 * Academic Integrity Policy:
 *
 * https://www.senecapolytechnic.ca/about/policies/academic-integrity-policy.html
 *
-* Name: Chin Lok Ho Student ID: 124907239 Date: 11-18-2024
+* Name: Chin Lok Ho Student ID: 124907239 Date: 12-5-2024
 *
 * Published URL: https://web-322-a3-gilt.vercel.app/
 * Github: https://github.com/DennisHCL/WEB322A3.git
