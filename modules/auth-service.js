@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const Schema = mongoose.Schema;
 require('dotenv').config();
 
+let connection = null;
+
 const userSchema = new Schema({
     userName: {
         type: String,
@@ -16,134 +18,108 @@ const userSchema = new Schema({
     }]
 });
 
-let db;
-let User;
-let isInitialized = false;
+class MongoConnection {
+    constructor() {
+        if (!connection) {
+            connection = this.connect();
+        }
+        return connection;
+    }
 
-function initialize() {
-    return new Promise(async (resolve, reject) => {
+    async connect() {
+        if (connection) return connection;
+
         try {
-            console.log("Starting MongoDB initialization check");
-            
-            // If already initialized, resolve immediately
-            if (isInitialized && User) {
-                console.log("MongoDB: Already initialized");
-                resolve();
-                return;
-            }
-
-            console.log("MongoDB: New initialization required");
-            const dbURI = process.env.MONGODB;
-            
-            db = await mongoose.createConnection(dbURI, {
+            const conn = await mongoose.createConnection(process.env.MONGODB, {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
-                serverSelectionTimeoutMS: 15000,
-                family: 4
+                bufferCommands: false,
+                serverSelectionTimeoutMS: 5000
             }).asPromise();
 
-            // Define model
-            User = db.model("users", userSchema);
-            isInitialized = true;
-            console.log("MongoDB: Initialization complete - User model created");
-            resolve();
-
+            conn.model('users', userSchema);
+            console.log('MongoDB Connected');
+            return conn;
         } catch (err) {
-            console.error("MongoDB Initialization Error:", err);
-            isInitialized = false;
-            User = null;
-            reject(err);
+            console.error('MongoDB Connection Error:', err);
+            throw err;
         }
-    });
-}
-
-async function registerUser(userData) {
-    console.log("Starting user registration process");
-    
-    try {
-        // Force initialization check
-        if (!isInitialized || !User) {
-            console.log("Database not initialized, attempting initialization");
-            await initialize();
-        }
-
-        // Validate passwords
-        if (userData.password !== userData.password2) {
-            console.log("Password mismatch detected");
-            throw new Error("Passwords do not match");
-        }
-
-        console.log("Hashing password...");
-        const hash = await bcrypt.hash(userData.password, 10);
-        
-        console.log("Creating new user document");
-        const newUser = new User({
-            userName: userData.userName,
-            password: hash,
-            email: userData.email,
-            loginHistory: []
-        });
-
-        console.log("Attempting to save user");
-        await newUser.save();
-        console.log("User saved successfully");
-        
-        return Promise.resolve();
-    } catch (err) {
-        console.error("Registration error details:", err);
-        
-        if (err.code === 11000) {
-            return Promise.reject("User Name already taken");
-        }
-        
-        if (!isInitialized || !User) {
-            return Promise.reject("Database not initialized. Please try again.");
-        }
-        
-        return Promise.reject(`There was an error creating the user: ${err.message}`);
     }
 }
 
-// Modify checkUser to ensure initialization
-async function checkUser(userData) {
-    try {
-        // Ensure database is initialized
-        if (!isInitialized) {
-            await initialize();
-        }
-
-        const user = await User.findOne({ userName: userData.userName }).exec();
-        if (!user) {
-            throw new Error(`Unable to find user: ${userData.userName}`);
-        }
-
-        const passwordMatch = await bcrypt.compare(userData.password, user.password);
-        if (!passwordMatch) {
-            throw new Error(`Incorrect Password for user: ${userData.userName}`);
-        }
-
-        if (user.loginHistory.length === 8) {
-            user.loginHistory.pop();
-        }
-
-        user.loginHistory.unshift({
-            dateTime: new Date(),
-            userAgent: userData.userAgent
-        });
-
-        await User.updateOne(
-            { userName: user.userName },
-            { $set: { loginHistory: user.loginHistory } }
-        );
-
-        return Promise.resolve(user);
-    } catch (err) {
-        return Promise.reject(err.message);
-    }
-}
+const dbConnection = new MongoConnection();
 
 module.exports = {
-    initialize,
-    registerUser,
-    checkUser
+    initialize: async function() {
+        try {
+            const conn = await dbConnection;
+            return Promise.resolve();
+        } catch (err) {
+            return Promise.reject(err);
+        }
+    },
+
+    registerUser: async function(userData) {
+        try {
+            const conn = await dbConnection;
+            const User = conn.model('users');
+
+            if (userData.password !== userData.password2) {
+                return Promise.reject("Passwords do not match");
+            }
+
+            const hash = await bcrypt.hash(userData.password, 10);
+            const newUser = new User({
+                userName: userData.userName,
+                password: hash,
+                email: userData.email,
+                loginHistory: []
+            });
+
+            await newUser.save();
+            return Promise.resolve();
+        } catch (err) {
+            if (err.code === 11000) {
+                return Promise.reject("User Name already taken");
+            }
+            return Promise.reject(`There was an error creating the user: ${err.message}`);
+        }
+    },
+
+    checkUser: async function(userData) {
+        try {
+            const conn = await dbConnection;
+            const User = conn.model('users');
+
+            const user = await User.findOne({ userName: userData.userName });
+            
+            if (!user) {
+                throw new Error(`Unable to find user: ${userData.userName}`);
+            }
+
+            const valid = await bcrypt.compare(userData.password, user.password);
+            
+            if (!valid) {
+                throw new Error(`Incorrect Password for user: ${userData.userName}`);
+            }
+
+            if (user.loginHistory.length === 8) {
+                user.loginHistory.pop();
+            }
+
+            user.loginHistory.unshift({
+                dateTime: new Date(),
+                userAgent: userData.userAgent
+            });
+
+            await User.updateOne(
+                { userName: user.userName },
+                { $set: { loginHistory: user.loginHistory }}
+            );
+
+            return Promise.resolve(user);
+        } catch (err) {
+            return Promise.reject(err.message);
+        }
+    }
 };
